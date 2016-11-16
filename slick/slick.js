@@ -1,17 +1,17 @@
 /*
-     _ _      _       _
+ _ _      _       _
  ___| (_) ___| | __  (_)___
-/ __| | |/ __| |/ /  | / __|
-\__ \ | | (__|   < _ | \__ \
-|___/_|_|\___|_|\_(_)/ |___/
-                   |__/
+ / __| | |/ __| |/ /  | / __|
+ \__ \ | | (__|   < _ | \__ \
+ |___/_|_|\___|_|\_(_)/ |___/
+ |__/
 
  Version: 1.6.0
-  Author: Ken Wheeler
+ Author: Ken Wheeler
  Website: http://kenwheeler.github.io
-    Docs: http://kenwheeler.github.io/slick
-    Repo: http://github.com/kenwheeler/slick
-  Issues: http://github.com/kenwheeler/slick/issues
+ Docs: http://kenwheeler.github.io/slick
+ Repo: http://github.com/kenwheeler/slick
+ Issues: http://github.com/kenwheeler/slick/issues
 
  */
 /* global window, document, define, jQuery, setInterval, clearInterval */
@@ -526,6 +526,9 @@
             '<div aria-live="polite" class="slick-list"/>').parent();
         _.$slideTrack.css('opacity', 0);
 
+        _.$navigationRight = $('<div class="slick-navigation right" />').appendTo(_.$list);
+        _.$navigationLeft = $('<div class="slick-navigation left" />').appendTo(_.$list);
+
         if (_.options.centerMode === true || _.options.swipeToSlide === true) {
             _.options.slidesToScroll = 1;
         }
@@ -546,7 +549,6 @@
         if (_.options.draggable === true) {
             _.$list.addClass('draggable');
         }
-
     };
 
     Slick.prototype.buildRows = function() {
@@ -714,7 +716,7 @@
 
             case 'index':
                 var index = event.data.index === 0 ? 0 :
-                    event.data.index || $target.index() * _.options.slidesToScroll;
+                event.data.index || $target.index() * _.options.slidesToScroll;
 
                 _.slideHandler(_.checkNavigable(index), false, dontAnimate);
                 $target.children().trigger('focus');
@@ -847,6 +849,7 @@
             _.$dots.remove();
         }
 
+
         if ( _.$prevArrow && _.$prevArrow.length ) {
 
             _.$prevArrow
@@ -869,6 +872,7 @@
             if ( _.htmlExpr.test( _.options.nextArrow )) {
                 _.$nextArrow.remove();
             }
+
         }
 
 
@@ -1009,19 +1013,19 @@
             .on('focus.slick blur.slick',
                 '*:not(.slick-arrow)', function(event) {
 
-            event.stopImmediatePropagation();
-            var $sf = $(this);
+                    event.stopImmediatePropagation();
+                    var $sf = $(this);
 
-            setTimeout(function() {
+                    setTimeout(function() {
 
-                if( _.options.pauseOnFocus ) {
-                    _.focussed = $sf.is(':focus');
-                    _.autoPlay();
-                }
+                        if( _.options.pauseOnFocus ) {
+                            _.focussed = $sf.is(':focus');
+                            _.autoPlay();
+                        }
 
-            }, 0);
+                    }, 0);
 
-        });
+                });
     };
 
     Slick.prototype.getCurrent = Slick.prototype.slickCurrentSlide = function() {
@@ -1090,7 +1094,7 @@
             }
         } else {
             if (slideIndex + _.options.slidesToShow > _.slideCount) {
-                _.slideOffset = ((slideIndex + _.options.slidesToShow) - _.slideCount) * _.slideWidth;
+                _.slideOffset = Math.floor(((slideIndex + _.options.slidesToShow) - _.slideCount) * _.slideWidth) - 1; // due to rounding some numbers (Math.ceil, Math.floor, etc) an extra pixel is lost when translating the carrousel
                 verticalOffset = ((slideIndex + _.options.slidesToShow) - _.slideCount) * verticalHeight;
             }
         }
@@ -1100,9 +1104,7 @@
             verticalOffset = 0;
         }
 
-        if (_.options.centerMode === true && _.slideCount <= _.options.slidesToShow) {
-            _.slideOffset = ((_.slideWidth * Math.floor(_.options.slidesToShow)) / 2) - ((_.slideWidth * _.slideCount) / 2);
-        } else if (_.options.centerMode === true && _.options.infinite === true) {
+        if (_.options.centerMode === true && _.options.infinite === true) {
             _.slideOffset += _.slideWidth * Math.floor(_.options.slidesToShow / 2) - _.slideWidth;
         } else if (_.options.centerMode === true) {
             _.slideOffset = 0;
@@ -1110,7 +1112,13 @@
         }
 
         if (_.options.vertical === false) {
-            targetLeft = ((slideIndex * _.slideWidth) * -1) + _.slideOffset;
+            targetLeft = Math.floor(((slideIndex * _.slideWidth) * -1) + _.slideOffset);
+
+            var decimal =  _.options.slidesToShow - Math.floor(_.options.slidesToShow);
+            if(slideIndex !== 0 && slideIndex + _.options.slidesToShow <= _.$slideTrack.children('.slick-slide').length) {
+                targetLeft += (_.slideWidth * decimal) / 2;
+            }
+
         } else {
             targetLeft = ((slideIndex * verticalHeight) * -1) + verticalOffset;
         }
@@ -1249,12 +1257,12 @@
             _.setProps();
             _.startLoad();
             _.loadSlider();
+            _.updateNavigation();
             _.initializeEvents();
             _.updateArrows();
             _.updateDots();
             _.checkResponsive(true);
             _.focusHandler();
-
         }
 
         if (creation) {
@@ -1274,6 +1282,42 @@
 
     };
 
+    Slick.prototype.updateNavigation = function() {
+        var _ = this;
+
+        if(this.slideCount > this.options.slidesToShow) {
+
+            var decimal = _.options.slidesToShow - Math.floor(_.options.slidesToShow);
+            var width = _.slideWidth * decimal;
+            var isFirstPage = this.currentSlide !== 0;
+            var isLastPage = this.currentSlide + this.options.slidesToShow > this.slideCount;
+
+            if(this.currentSlide !== 0 && !isLastPage) {
+                width = width/2;
+            }
+
+            isLastPage ? _.$navigationRight.width(0) : _.$navigationRight.width(width);
+            isFirstPage ? _.$navigationLeft.width(width) : _.$navigationLeft.width(0);
+        }
+    }
+
+    Slick.prototype.initNavigationEvents = function() {
+        var _ = this;
+
+        if (_.slideCount > _.options.slidesToShow) {
+            _.$navigationLeft
+                .off('click.slick')
+                .on('click.slick', {
+                    message: 'previous'
+                }, _.changeSlide);
+            _.$navigationRight
+                .off('click.slick')
+                .on('click.slick', {
+                    message: 'next'
+                }, _.changeSlide);
+        }
+    }
+
     Slick.prototype.initADA = function() {
         var _ = this;
         _.$slides.add(_.$slideTrack.find('.slick-cloned')).attr({
@@ -1286,25 +1330,21 @@
         _.$slideTrack.attr('role', 'listbox');
 
         _.$slides.not(_.$slideTrack.find('.slick-cloned')).each(function(i) {
-            $(this).attr('role', 'option');
-
-            //Evenly distribute aria-describedby tags through available dots.
-            var describedBySlideId = _.options.centerMode ? i : Math.floor(i / _.options.slidesToShow);
-
-            if (_.options.dots === true) {
-                $(this).attr('aria-describedby', 'slick-slide' + _.instanceUid + describedBySlideId + '');
-            }
+            $(this).attr({
+                'role': 'option',
+                'aria-describedby': 'slick-slide' + _.instanceUid + i + ''
+            });
         });
 
         if (_.$dots !== null) {
             _.$dots.attr('role', 'tablist').find('li').each(function(i) {
-                $(this).attr({
-                    'role': 'presentation',
-                    'aria-selected': 'false',
-                    'aria-controls': 'navigation' + _.instanceUid + i + '',
-                    'id': 'slick-slide' + _.instanceUid + i + ''
-                });
-            })
+                    $(this).attr({
+                        'role': 'presentation',
+                        'aria-selected': 'false',
+                        'aria-controls': 'navigation' + _.instanceUid + i + '',
+                        'id': 'slick-slide' + _.instanceUid + i + ''
+                    });
+                })
                 .first().attr('aria-selected', 'true').end()
                 .find('button').attr('role', 'button').end()
                 .closest('div').attr('role', 'toolbar');
@@ -1319,15 +1359,15 @@
 
         if (_.options.arrows === true && _.slideCount > _.options.slidesToShow) {
             _.$prevArrow
-               .off('click.slick')
-               .on('click.slick', {
+                .off('click.slick')
+                .on('click.slick', {
                     message: 'previous'
-               }, _.changeSlide);
+                }, _.changeSlide);
             _.$nextArrow
-               .off('click.slick')
-               .on('click.slick', {
+                .off('click.slick')
+                .on('click.slick', {
                     message: 'next'
-               }, _.changeSlide);
+                }, _.changeSlide);
         }
 
     };
@@ -1373,6 +1413,7 @@
 
         _.initDotEvents();
         _.initSlideEvents();
+        _.initNavigationEvents();
 
         _.$list.on('touchstart.slick mousedown.slick', {
             action: 'start'
@@ -1432,7 +1473,7 @@
     Slick.prototype.keyHandler = function(event) {
 
         var _ = this;
-         //Dont slide if the cursor is inside the form fields and arrow keys are pressed
+        //Dont slide if the cursor is inside the form fields and arrow keys are pressed
         if(!event.target.tagName.match('TEXTAREA|INPUT|SELECT')) {
             if (event.keyCode === 37 && _.options.accessibility === true) {
                 _.changeSlide({
@@ -1515,21 +1556,6 @@
         }
 
         loadRange = _.$slider.find('.slick-slide').slice(rangeStart, rangeEnd);
-
-        if (_.options.lazyLoad === 'anticipated') {
-            var prevSlide = rangeStart - 1,
-                nextSlide = rangeEnd,
-                $slides = _.$slider.find('.slick-slide');
-
-            for (var i = 0; i < _.options.slidesToScroll; i++) {
-                if (prevSlide < 0) prevSlide = _.slideCount - 1;
-                loadRange = loadRange.add($slides.eq(prevSlide));
-                loadRange = loadRange.add($slides.eq(nextSlide));
-                prevSlide--;
-                nextSlide++;
-            }
-        }
-
         loadImages(loadRange);
 
         if (_.slideCount <= _.options.slidesToShow) {
@@ -1953,8 +1979,9 @@
 
 
         if (_.options.vertical === false && _.options.variableWidth === false) {
+
             _.slideWidth = Math.ceil(_.listWidth / _.options.slidesToShow);
-            _.$slideTrack.width(Math.ceil((_.slideWidth * _.$slideTrack.children('.slick-slide').length)));
+            _.$slideTrack.width(Math.ceil((   (_.slideWidth * _.$slideTrack.children('.slick-slide').length) )));
 
         } else if (_.options.variableWidth === true) {
             _.$slideTrack.width(5000 * _.slideCount);
@@ -2013,102 +2040,102 @@
     };
 
     Slick.prototype.setOption =
-    Slick.prototype.slickSetOption = function() {
+        Slick.prototype.slickSetOption = function() {
 
-        /**
-         * accepts arguments in format of:
-         *
-         *  - for changing a single option's value:
-         *     .slick("setOption", option, value, refresh )
-         *
-         *  - for changing a set of responsive options:
-         *     .slick("setOption", 'responsive', [{}, ...], refresh )
-         *
-         *  - for updating multiple values at once (not responsive)
-         *     .slick("setOption", { 'option': value, ... }, refresh )
-         */
+            /**
+             * accepts arguments in format of:
+             *
+             *  - for changing a single option's value:
+             *     .slick("setOption", option, value, refresh )
+             *
+             *  - for changing a set of responsive options:
+             *     .slick("setOption", 'responsive', [{}, ...], refresh )
+             *
+             *  - for updating multiple values at once (not responsive)
+             *     .slick("setOption", { 'option': value, ... }, refresh )
+             */
 
-        var _ = this, l, item, option, value, refresh = false, type;
+            var _ = this, l, item, option, value, refresh = false, type;
 
-        if( $.type( arguments[0] ) === 'object' ) {
+            if( $.type( arguments[0] ) === 'object' ) {
 
-            option =  arguments[0];
-            refresh = arguments[1];
-            type = 'multiple';
+                option =  arguments[0];
+                refresh = arguments[1];
+                type = 'multiple';
 
-        } else if ( $.type( arguments[0] ) === 'string' ) {
+            } else if ( $.type( arguments[0] ) === 'string' ) {
 
-            option =  arguments[0];
-            value = arguments[1];
-            refresh = arguments[2];
+                option =  arguments[0];
+                value = arguments[1];
+                refresh = arguments[2];
 
-            if ( arguments[0] === 'responsive' && $.type( arguments[1] ) === 'array' ) {
+                if ( arguments[0] === 'responsive' && $.type( arguments[1] ) === 'array' ) {
 
-                type = 'responsive';
+                    type = 'responsive';
 
-            } else if ( typeof arguments[1] !== 'undefined' ) {
+                } else if ( typeof arguments[1] !== 'undefined' ) {
 
-                type = 'single';
-
-            }
-
-        }
-
-        if ( type === 'single' ) {
-
-            _.options[option] = value;
-
-
-        } else if ( type === 'multiple' ) {
-
-            $.each( option , function( opt, val ) {
-
-                _.options[opt] = val;
-
-            });
-
-
-        } else if ( type === 'responsive' ) {
-
-            for ( item in value ) {
-
-                if( $.type( _.options.responsive ) !== 'array' ) {
-
-                    _.options.responsive = [ value[item] ];
-
-                } else {
-
-                    l = _.options.responsive.length-1;
-
-                    // loop through the responsive object and splice out duplicates.
-                    while( l >= 0 ) {
-
-                        if( _.options.responsive[l].breakpoint === value[item].breakpoint ) {
-
-                            _.options.responsive.splice(l,1);
-
-                        }
-
-                        l--;
-
-                    }
-
-                    _.options.responsive.push( value[item] );
+                    type = 'single';
 
                 }
 
             }
 
-        }
+            if ( type === 'single' ) {
 
-        if ( refresh ) {
+                _.options[option] = value;
 
-            _.unload();
-            _.reinit();
 
-        }
+            } else if ( type === 'multiple' ) {
 
-    };
+                $.each( option , function( opt, val ) {
+
+                    _.options[opt] = val;
+
+                });
+
+
+            } else if ( type === 'responsive' ) {
+
+                for ( item in value ) {
+
+                    if( $.type( _.options.responsive ) !== 'array' ) {
+
+                        _.options.responsive = [ value[item] ];
+
+                    } else {
+
+                        l = _.options.responsive.length-1;
+
+                        // loop through the responsive object and splice out duplicates.
+                        while( l >= 0 ) {
+
+                            if( _.options.responsive[l].breakpoint === value[item].breakpoint ) {
+
+                                _.options.responsive.splice(l,1);
+
+                            }
+
+                            l--;
+
+                        }
+
+                        _.options.responsive.push( value[item] );
+
+                    }
+
+                }
+
+            }
+
+            if ( refresh ) {
+
+                _.unload();
+                _.reinit();
+
+            }
+
+        };
 
     Slick.prototype.setPosition = function() {
 
@@ -2289,9 +2316,10 @@
 
         }
 
-        if (_.options.lazyLoad === 'ondemand' || _.options.lazyLoad === 'anticipated') {
+        if (_.options.lazyLoad === 'ondemand') {
             _.lazyLoad();
         }
+
     };
 
     Slick.prototype.setupInfinite = function() {
@@ -2316,7 +2344,7 @@
                 }
 
                 for (i = _.slideCount; i > (_.slideCount -
-                        infiniteCount); i -= 1) {
+                infiniteCount); i -= 1) {
                     slideIndex = i - 1;
                     $(_.$slides[slideIndex]).clone(true).attr('id', '')
                         .attr('data-slick-index', slideIndex - _.slideCount)
@@ -2496,6 +2524,7 @@
             _.postSlide(animSlide);
         }
 
+        _.updateNavigation();
     };
 
     Slick.prototype.startLoad = function() {
@@ -2583,7 +2612,7 @@
                     slideCount =
                         _.options.swipeToSlide ?
                             _.checkNavigable( _.currentSlide + _.getSlideCount() ) :
-                            _.currentSlide + _.getSlideCount();
+                        _.currentSlide + _.getSlideCount();
 
                     _.currentDirection = 0;
 
@@ -2595,7 +2624,7 @@
                     slideCount =
                         _.options.swipeToSlide ?
                             _.checkNavigable( _.currentSlide - _.getSlideCount() ) :
-                            _.currentSlide - _.getSlideCount();
+                        _.currentSlide - _.getSlideCount();
 
                     _.currentDirection = 1;
 
@@ -2641,11 +2670,11 @@
             event.originalEvent.touches.length : 1;
 
         _.touchObject.minSwipe = _.listWidth / _.options
-            .touchThreshold;
+                .touchThreshold;
 
         if (_.options.verticalSwiping === true) {
             _.touchObject.minSwipe = _.listHeight / _.options
-                .touchThreshold;
+                    .touchThreshold;
         }
 
         switch (event.data.action) {

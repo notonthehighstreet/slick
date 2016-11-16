@@ -1289,15 +1289,15 @@
 
             var decimal = _.options.slidesToShow - Math.floor(_.options.slidesToShow);
             var width = _.slideWidth * decimal;
-            var isFirstPage = this.currentSlide !== 0;
+            var isFirstPage = this.currentSlide === 0;
             var isLastPage = this.currentSlide + this.options.slidesToShow > this.slideCount;
 
-            if(this.currentSlide !== 0 && !isLastPage) {
-                width = width/2;
+            if(!isFirstPage && !isLastPage) {
+                width /= 2;
             }
 
             isLastPage ? _.$navigationRight.width(0) : _.$navigationRight.width(width);
-            isFirstPage ? _.$navigationLeft.width(width) : _.$navigationLeft.width(0);
+            isFirstPage ? _.$navigationLeft.width(0) : _.$navigationLeft.width(width);
         }
     }
 

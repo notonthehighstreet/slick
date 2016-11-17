@@ -1094,7 +1094,7 @@
             }
         } else {
             if (slideIndex + _.options.slidesToShow > _.slideCount) {
-                _.slideOffset = Math.floor(((slideIndex + _.options.slidesToShow) - _.slideCount) * _.slideWidth) - 1; // due to rounding some numbers (Math.ceil, Math.floor, etc) an extra pixel is lost when translating the carrousel
+                _.slideOffset = Math.floor(((slideIndex + _.options.slidesToShow) - _.slideCount) * _.slideWidth);
                 verticalOffset = ((slideIndex + _.options.slidesToShow) - _.slideCount) * verticalHeight;
             }
         }
@@ -1115,8 +1115,16 @@
             targetLeft = Math.floor(((slideIndex * _.slideWidth) * -1) + _.slideOffset);
 
             var decimal =  _.options.slidesToShow - Math.floor(_.options.slidesToShow);
-            if(slideIndex !== 0 && slideIndex + _.options.slidesToShow <= _.$slideTrack.children('.slick-slide').length) {
+            var isFirstPage = slideIndex === 0;
+            var isLastPage = slideIndex + this.options.slidesToShow > this.slideCount;
+
+            if(!isFirstPage && !isLastPage) {
                 targetLeft += (_.slideWidth * decimal) / 2;
+            }
+
+            // Minor hack. Due to some rounding made on some operations 1 or 2px might be lost. This way we guarantee transform: translate3d to the last page will be always aligned
+            if(isLastPage) {
+                targetLeft = ((_.slideWidth * this.slideCount) - this.$list.width()) * -1;
             }
 
         } else {
